@@ -66,3 +66,29 @@ target_link_libraries(simple
 
 아래 링크에서 CMakeLists에 대한 내용 확인 가능
 http://wiki.ros.org/catkin/CMakeLists.txt
+
+## 파라미터 서버
+- 파라미터 서버는 파라미터를 저장하는 딕셔러니이다.
+- 이 파라미터들은 런타임동안 사용되며 정적 데이터에 쓰인다.
+
+```
+$ rosparam list
+$ rosparam get <parameter_name>
+$ rosparam set <parameter_name> <value>
+```
+
+## 환경변수
+- ROS는 적절한 작업 환경을 위해 리눅스의 환경변수를 사용한다.
+- 아래 타이핑을 통해 이 환경변수를 확인할 수 있다.
+
+```
+$ export | grep ROS
+```
+
+```
+declare -x ROSLISP_PACKAGE_DIRECTORIES="/home/user/catkin_ws/devel/share/common-lisp"
+declare -x ROS_DISTRO="indigo"
+declare -x ROS_ETC_DIR="/opt/ros/indigo/etc/ros"
+declare -x ROS_MASTER_URI="http://localhost:11311"
+declare -x ROS_PACKAGE_PATH="/home/user/catkin_ws/src:/opt/ros/indigo/share:/opt/ros/indigo/stacks"
+declare -x ROS_ROOT="/opt/ros/indigo/share/ros"```
