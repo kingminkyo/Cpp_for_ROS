@@ -1,94 +1,97 @@
-## 패키지를 컴파일하는 2가지 방법
-
-- 패키지 생성 및 스크립트 작성 이후 이를 실행하기 위해 컴파일해야한다.
-- 컴파일의 방법은 여러 종류가 있지만 해당 코스에서는 2가지만 소개함.
-
-
-
-### catkin make
-```
-$ catkin_make
-```
-- workspace 디렉토리에서만 작동함(필수)
-- 모든 src 디렉토리를 컴파일함
-
-```
-$ source devel/setup.bash
-```
-- 컴파일 후에는 다음 명령을 반드시 실행해주어야 한다.
-- 최신 변경 사항을 적용하기 위함.
-
-```
-$ catkin_make --only-pkg-with-deps <package_name>
-```
-- workspace 내 모든 패키지를 컴파일하는 것이 아닌 특정 패키지만 컴파일하고 싶을 경우 다음과 같은 명령 사용
+> ## 학습할 내용
+1. Publish를 위한 패키지 생성과 C++, std_msgs 의존성 추가
+2. Launch파일 작성
+3. CMakeList.txt 파일 수정 및 컴파일
 
 ---
 
-
+## 1. 패키지 생성
 ```
-$ rospack profile
+$ catkin_create_pkg topic_publisher_pkg roscpp std_msgs
 ```
-- ros가 때때로 새로운 패키지를 감지하지 못했을 경우 launch를 실행하지 못한다.
-- 이때 새로고침해주는 명령어
+- c++와 std_msgs를 의존성으로 갖는 패키지 생성
+- 필자는 std_msgs를 std_msg로 적어 빌드가 되지 않는 문제가 있었는데, 새로 패키지를 만들기보다는 CMakeList.txt에서 해당 부분을 수정하며 해결하였음
 
+>CMakeList.txt
+``` java
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  std_msg -> std_msgs
+)
+``` 
+- 위 CMake txt파일에 컴파일을 위한 해당 내용 추가
+``` java
+add_executable(simple_topic_publisher src/simple_topic_publisher.cpp)
+add_dependencies(simple_topic_publisher ${simple_topic_publisher_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(simple_topic_publisher
+   ${catkin_LIBRARIES}
+ )
+```
+
+## 2. C++ 파일 작성
+
+``` cpp
+#include <ros/ros.h>
+#include <std_msgs/Int32.h>
+
+int main(int argc, char** argv) {
+
+    ros::init(argc, argv, "topic_publisher");
+    ros::NodeHandle nh;
+    
+    ros::Publisher pub = nh.advertise<std_msgs::Int32>("counter", 1000);
+    ros::Rate loop_rate(2);
+    
+    std_msgs::Int32 count;
+    count.data = 0;
+    
+    while (ros::ok())
+    {
+        pub.publish(count);
+        ros::spinOnce();
+        loop_rate.sleep();
+        ++count.data;
+    }
+    
+    return 0;
+}
+```
+- init 함수를 통해 ROS 노드를 초기화하며 노드 이름은 topic_publisher임 
+- 초당 2초의 주기로 루프를 실행하는 스크립트임
+- counter 토픽은 최대 1000개의 메시지를 저장 가능함
+
+> publisher.launch 파일은 다음과 같이 작성
+``` xml
+<launch>
+    <!-- My Package launch file -->
+    <node pkg="topic_publisher_pkg" type="simple_topic_publisher" name="counter"  output="screen">
+    </node>
+</launch>
+```
 
 ---
-## CMakeList.txt 수정하기
-```
-add_executable(simple src/simple.cpp)
-add_dependencies(simple ${simple_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(simple
-   ${catkin_LIBRARIES}
- )
-```
-- C++로 프로그램을 작성했을 경우 패키지 내의 CMakeList.txt 를 수정해야한다.
-- 아래는 각각의 역할
+## 3. 실행
 
+- catkin_ws에서 catkin_make 진행 후 런치파일 실행
 ```
-add_executable(simple src/simple.cpp)
+$ user:~/catkin_ws$ roslaunch topic_publisher_pkg publisher.launch
 ```
-- C++파일의 실행 파일을 생성
-- 실행 파일은 devel/lib에 있음
-
+- 그리고 다음 명령을 통해 /counter 토픽이 실행 중임을 확인할 수 있음
 ```
-add_dependencies(simple ${simple_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-```
-- 실행 파일의 모든 의존성을 추가함
-
-```
-target_link_libraries(simple
-   ${catkin_LIBRARIES}
- )
-```
-- 지정된 대상을 연결할 때 사용할 라이브러리 지정
-- 위 줄에서는 생성한 실행 파일을 연결하기 위해 catkin 라이브러리를 사용한다.
-
-아래 링크에서 CMakeLists에 대한 내용 확인 가능
-http://wiki.ros.org/catkin/CMakeLists.txt
-
-## 파라미터 서버
-- 파라미터 서버는 파라미터를 저장하는 딕셔러니이다.
-- 이 파라미터들은 런타임동안 사용되며 정적 데이터에 쓰인다.
-
-```
-$ rosparam list
-$ rosparam get <parameter_name>
-$ rosparam set <parameter_name> <value>
+user ~ $ rostopic list | grep '/counter'
+/counter
 ```
 
-## 환경변수
-- ROS는 적절한 작업 환경을 위해 리눅스의 환경변수를 사용한다.
-- 아래 타이핑을 통해 이 환경변수를 확인할 수 있다.
+- 다음 명령을 통해 토픽에 대한 정보를 확인할 수 있음
 
 ```
-$ export | grep ROS
+user ~ $ rostopic info /counter
+Type: std_msgs/Int32
+
+Publishers:
+ * /topic_publisher (http://ip-172-31-16-133:47971/)
+
+Subscribers: None
 ```
 
-```
-declare -x ROSLISP_PACKAGE_DIRECTORIES="/home/user/catkin_ws/devel/share/common-lisp"
-declare -x ROS_DISTRO="indigo"
-declare -x ROS_ETC_DIR="/opt/ros/indigo/etc/ros"
-declare -x ROS_MASTER_URI="http://localhost:11311"
-declare -x ROS_PACKAGE_PATH="/home/user/catkin_ws/src:/opt/ros/indigo/share:/opt/ros/indigo/stacks"
-declare -x ROS_ROOT="/opt/ros/indigo/share/ros"```
+![Alt text](image.png)
