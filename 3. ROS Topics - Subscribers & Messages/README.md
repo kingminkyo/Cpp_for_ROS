@@ -107,3 +107,11 @@ catkin_package(
 #  DEPENDS system_lib
 )
 ```
+
+- package.xml 파일에서는 아래 내용을 추가해줘야함
+```
+<build_depend>message_generation</build_depend>
+
+<build_export_depend>message_runtime</build_export_depend>
+<exec_depend>message_runtime</exec_depend>
+```
